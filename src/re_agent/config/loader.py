@@ -284,5 +284,8 @@ def validate_config(config: ReAgentConfig) -> None:
         value = getattr(config.validation, name)
         if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
             raise ValueError(f"validation.{name} must be a list of strings")
+    unavailable = config.validation.unavailable_exit_code
+    if unavailable is not None and (type(unavailable) is not int or not 1 <= unavailable <= 255):
+        raise ValueError("validation.unavailable_exit_code must be an integer from 1 to 255")
     if config.validation.command_timeout_s <= 0:
         raise ValueError("validation.command_timeout_s must be positive")

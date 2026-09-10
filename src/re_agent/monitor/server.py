@@ -221,7 +221,7 @@ class Monitor:
                     if isinstance(data, dict):
                         rows = [{key: row.get(key) for key in
                                  ("address", "function_name", "success", "rounds_used", "timestamp",
-                                  "verdict", "validation_verdict")}
+                                  "verdict", "validation_verdict", "outcome")}
                                 for row in data.values()
                                 if isinstance(row, dict) and isinstance(row.get("address"), str)]
                         self.cache[path] = (stamp, rows)
@@ -232,6 +232,12 @@ class Monitor:
                         functions[address] = row
             recent = sorted(functions.values(), key=lambda r: str(r.get("timestamp") or ""), reverse=True)
             passed = sum(row["success"] is True for row in recent)
+            unvalidated = sum(row.get("outcome") == "unvalidated" for row in recent)
+            blocked = sum(row.get("outcome") == "blocked" for row in recent)
+            for row in recent:
+                if row.get("outcome") in {"unvalidated", "blocked"}:
+                    row["result_label"] = ("Unvalidated draft" if row["outcome"] == "unvalidated"
+                                           else "Blocked by evidence")
             rounds = sum(row["rounds_used"] for row in recent if type(row.get("rounds_used")) is int)
             tail = ""
             try:
@@ -256,7 +262,8 @@ class Monitor:
             snapshot = {"active": active, "controls": bool(self.worker),
                     "phase": phase, "executions": [data for _, data in self.executions()],
                     "targets": self.total, "completed": len(recent), "passed": passed,
-                    "failed": len(recent) - passed, "rounds": rounds, "recent": recent[:18], "log": tail,
+                    "failed": len(recent) - passed - unvalidated - blocked, "unvalidated": unvalidated,
+                    "blocked": blocked, "rounds": rounds, "recent": recent[:18], "log": tail,
                     "updated": time.strftime("%H:%M:%S"), "output": str(self.work_dir)}
             if self.progress_file is not None:
                 snapshot.update(self.external_progress())

@@ -315,3 +315,12 @@ differential check in order. Missing checks mean no recorded execution, not a
 pass; older sessions retain their aggregate verdict without invented details.
 Acceptance means the configured policy accepted the candidate. It is not proof
 of equivalence, and selected-inventory coverage is not whole-program coverage.
+# Unavailable validation coverage
+
+Set `validation.unavailable_exit_code` to a nonzero process exit code (for example,
+77) only when a validation command explicitly distinguishes missing coverage from
+a failed check. That code produces `UNKNOWN`, never `PASS`. Other nonzero exits
+remain failures. With `require_verified: true`, a reviewed candidate with unknown
+validation remains an unaccepted `unvalidated` draft. ReAgent does not repeatedly
+repair code merely because coverage is missing. Sessions and the monitor distinguish
+these drafts from failures. Leave the option unset for existing command behavior.

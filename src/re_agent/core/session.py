@@ -102,6 +102,7 @@ class Session:
             "class_name": result.target.class_name,
             "function_name": result.target.function_name,
             "success": result.success,
+            "outcome": result.outcome,
             "rounds_used": result.rounds_used,
             "verdict": result.checker_verdict.verdict.value if result.checker_verdict else None,
             "validation_verdict": (result.validation_verdict.verdict.value if result.validation_verdict else None),
@@ -143,20 +144,29 @@ class Session:
         total = 0
         passed = 0
         failed = 0
+        unvalidated = 0
+        blocked = 0
         for func in self._data["functions"].values():
             if func.get("class_name") == class_name:
                 total += 1
                 if func.get("success"):
                     passed += 1
+                elif func.get("outcome") == "unvalidated":
+                    unvalidated += 1
+                elif func.get("outcome") == "blocked":
+                    blocked += 1
                 else:
                     failed += 1
-        return {"total": total, "passed": passed, "failed": failed}
+        return {"total": total, "passed": passed, "failed": failed,
+                "unvalidated": unvalidated, "blocked": blocked}
 
     def get_summary(self) -> dict[str, Any]:
         funcs = self._data["functions"]
         total = len(funcs)
         passed = sum(1 for f in funcs.values() if f.get("success"))
-        failed = total - passed
+        unvalidated = sum(f.get("outcome") == "unvalidated" for f in funcs.values())
+        blocked = sum(f.get("outcome") == "blocked" for f in funcs.values())
+        failed = total - passed - unvalidated - blocked
         classes: set[str] = set()
         for f in funcs.values():
             cn = f.get("class_name", "")
@@ -166,6 +176,8 @@ class Session:
             "total_functions": total,
             "passed": passed,
             "failed": failed,
+            "unvalidated": unvalidated,
+            "blocked": blocked,
             "classes_touched": len(classes),
         }
 

@@ -101,6 +101,20 @@ class ReversalResult:
     run_id: str = ""
     error: str | None = None
 
+    @property
+    def outcome(self) -> str:
+        if self.success:
+            return "accepted"
+        if self.error and self.error.startswith("Blocked:"):
+            return "blocked"
+        if (self.code and not self.error and self.checker_verdict
+                and self.checker_verdict.verdict == Verdict.PASS
+                and self.validation_verdict and self.validation_verdict.verdict == Verdict.UNKNOWN
+                and (self.objective_verdict is None or self.objective_verdict.verdict != Verdict.FAIL)
+                and self.parity_status != ParityStatus.RED):
+            return "unvalidated"
+        return "failed"
+
 
 # ---------------------------------------------------------------------------
 # Ghidra / decompiler data

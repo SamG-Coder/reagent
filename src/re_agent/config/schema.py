@@ -147,6 +147,7 @@ class ValidationConfig:
     working_directory: str = "."
     keep_project_copy: bool = False
     parallel_safe: bool = False
+    unavailable_exit_code: int | None = None
 
 
 @dataclass

@@ -292,6 +292,7 @@
           <div class="label">NEEDS ATTENTION</div>
           <div id="failed" class="number amber">0</div>
           <div class="label">Review or processing failed</div>
+          <div class="label" id="coverage-summary"></div>
         </div>
         <div class="stat">
           <div class="label">REVIEW ROUNDS</div>
@@ -424,6 +425,7 @@
             : `${fmt(s.completed)} attempted`;
           for (let k of ["completed", "passed", "failed", "rounds"])
             el(k).textContent = fmt(s[k]);
+          el("coverage-summary").textContent = `${fmt(s.unvalidated || 0)} unvalidated · ${fmt(s.blocked || 0)} blocked`;
           el("log").textContent = [s.diagnostics, s.log].filter(Boolean).join("\n\n").replace(/\x1b\[[0-9;]*m/g, "") || "Waiting for worker output…";
           el("run-details").hidden = !(s.details || []).length;
           el("detail-rows").replaceChildren();

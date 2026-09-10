@@ -189,6 +189,10 @@ def validate_candidate(
             lines = [*lines[:10], "[intermediate output omitted]", *lines[-10:]]
         excerpt = "\n".join(line[:500] for line in lines)
         findings.append(f"{kind}: {command} -> exit {proc.returncode}\n{excerpt}".rstrip())
+        if config.unavailable_exit_code is not None and proc.returncode == config.unavailable_exit_code:
+            checks.append({"kind": kind, "verdict": "UNKNOWN", "detail": "Validation coverage unavailable"})
+            return ValidationVerdict(verdict=Verdict.UNKNOWN, summary="Validation coverage unavailable",
+                                     findings=findings, checks=checks, overlay_file=str(candidate_file))
         checks.append({"kind": kind, "verdict": "PASS" if proc.returncode == 0 else "FAIL",
                        "detail": f"exit {proc.returncode}"})
         if proc.returncode != 0:

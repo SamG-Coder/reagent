@@ -18,6 +18,7 @@ from re_agent.core.models import (
     CheckerVerdict,
     FunctionTarget,
     ObjectiveVerdict,
+    ParityStatus,
     ReversalResult,
     Verdict,
 )
@@ -155,7 +156,11 @@ def run_fix_loop(
             checked = candidate_preflight(ReversalResult(
                 target=target, code=code, success=True, rounds_used=round_num, run_id=run_id,
             ))
-            if not checked.success:
+            coverage_unavailable = (checked.validation_verdict is not None
+                                    and checked.validation_verdict.verdict == Verdict.UNKNOWN
+                                    and not checked.error
+                                    and checked.parity_status != ParityStatus.RED)
+            if not checked.success and not coverage_unavailable:
                 details = []
                 if checked.validation_verdict:
                     details = [checked.validation_verdict.summary, *checked.validation_verdict.findings]
@@ -231,7 +236,8 @@ def run_fix_loop(
             (log_dir / f"round{round_num}-result.json").write_text(results_to_json([result]), encoding="utf-8")
         if session is not None:
             session.record_checkpoint(result)
-        if result.success or (objective_verdict is not None and objective_verdict.evidence_conflict):
+        if result.success or result.outcome == "unvalidated" or (
+                objective_verdict is not None and objective_verdict.evidence_conflict):
             return result
         failure_key = hashlib.sha256(
             json.dumps(

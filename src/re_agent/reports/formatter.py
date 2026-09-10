@@ -10,7 +10,7 @@ from re_agent.core.models import ReversalResult
 
 def format_result(result: ReversalResult, include_code: bool = True) -> str:
     """Format a single result for terminal display."""
-    status = "PASS" if result.success else "FAIL"
+    status = "PASS" if result.success else "FAIL" if result.outcome == "failed" else result.outcome.upper()
     lines = [
         f"{result.target.class_name}::{result.target.function_name} ({result.target.address})",
         f"  Status: {status} | Rounds: {result.rounds_used}",
@@ -65,7 +65,7 @@ def results_to_markdown(results: list[ReversalResult]) -> str:
         "|---------|----------|--------|--------|--------|",
     ]
     for r in results:
-        status = "PASS" if r.success else "FAIL"
+        status = "PASS" if r.success else "FAIL" if r.outcome == "failed" else r.outcome.upper()
         parity = r.parity_status.value if r.parity_status else "-"
         fn = f"{r.target.class_name}::{r.target.function_name}"
         lines.append(f"| {r.target.address} | {fn} | {status} | {r.rounds_used} | {parity} |")
@@ -80,6 +80,7 @@ def _result_to_dict(result: ReversalResult) -> dict[str, Any]:
         "class_name": result.target.class_name,
         "function_name": result.target.function_name,
         "success": result.success,
+        "outcome": result.outcome,
         "rounds_used": result.rounds_used,
         "code": result.code if result.code else None,
     }
