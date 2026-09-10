@@ -5,7 +5,7 @@ import pytest
 
 from re_agent.agents.reverser import ReverserAgent
 from re_agent.backend.stub import StubBackend
-from re_agent.core.models import FunctionTarget
+from re_agent.core.models import AsmResult, FunctionTarget
 from re_agent.llm.protocol import Message
 
 
@@ -56,3 +56,16 @@ def test_unavailable_investigations_are_not_advertised(enabled, budget):
     assert '"actions"' not in system
     assert "Additional investigation tools are unavailable" in system
     assert llm.calls == 1
+
+
+def test_disabled_actions_still_receive_prefetched_assembly():
+    class AssemblyBackend(StubBackend):
+        def get_asm(self, target):
+            return AsmResult(target, '100 MOV EAX,7\n105 RET', 2, 0, False)
+
+    llm = _ActionLLM()
+    llm.calls = 1  # Return the fixture's code response, not an action request.
+    reverser = ReverserAgent(llm, AssemblyBackend(), investigation_enabled=False)
+    reverser.reverse(FunctionTarget('100', '', 'f'))
+    assert 'MOV EAX,7' in reverser.last_prompt
+    assert '"actions"' not in llm.last_messages[0].content

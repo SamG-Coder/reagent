@@ -147,7 +147,9 @@ class ReverserAgent:
 
     def _build_investigation_context(self, target: FunctionTarget) -> str:
         """Collect bounded structured evidence exposed by the RE backend."""
-        if not self._investigation_enabled or self._max_investigations == 0:
+        # Prefetched evidence does not require model-requested tool access.
+        # A text-only provider still needs assembly/IR to interpret decompilation.
+        if self._max_investigations == 0:
             return ""
         artifacts: list[str] = []
 
