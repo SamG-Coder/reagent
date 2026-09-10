@@ -86,7 +86,7 @@ def run_fix_loop(
         investigation_enabled=investigation_enabled,
         max_investigations=max_investigations,
     )
-    checker = CheckerAgent(checker_llm, backend)
+    checker = CheckerAgent(checker_llm, backend, project_profile=project_profile)
 
     if log_dir:
         log_dir.mkdir(parents=True, exist_ok=True)

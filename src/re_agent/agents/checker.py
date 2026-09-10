@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 from re_agent.backend.protocol import REBackend
+from re_agent.config.schema import ProjectProfile
 from re_agent.core.models import CheckerVerdict, FunctionTarget, Verdict
 from re_agent.llm.protocol import LLMProvider, Message
 from re_agent.utils.templates import render_template
@@ -21,9 +22,11 @@ FIX_RE = re.compile(r"FIX_INSTRUCTIONS:\s*\n((?:\s*-\s*.+\n?)+)", re.I)
 class CheckerAgent:
     """Verifies reversed code against Ghidra decompilation."""
 
-    def __init__(self, llm: LLMProvider, backend: REBackend) -> None:
+    def __init__(self, llm: LLMProvider, backend: REBackend,
+                 project_profile: ProjectProfile | None = None) -> None:
         self.llm = llm
         self.backend = backend
+        self.project_profile = project_profile
         self._conversation_id: str | None = None
         self.last_prompt: str = ""
         self.last_response: str = ""
@@ -42,6 +45,12 @@ class CheckerAgent:
             reversed_code=code,
             decompiled=decompiled,
         )
+        if self.project_profile is not None:
+            task_prompt += (
+                "\n\nProject compilation context (verify behavior against binary evidence independently):\n"
+                f"Language standard: {self.project_profile.language_standard}\n"
+                + "\n".join(f"- {rule}" for rule in self.project_profile.prompt_rules)
+            )
 
         from re_agent.agents.reverser import ReverserAgent
 
