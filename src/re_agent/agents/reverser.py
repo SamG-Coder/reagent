@@ -86,7 +86,15 @@ class ReverserAgent:
             except Exception:
                 structs_text = "Unavailable"
 
-        system_prompt = render_template(PROMPTS_DIR / "reverser_system.md")
+        investigation_instructions = (
+            render_template(PROMPTS_DIR / "investigation_tools.md")
+            if self._investigation_enabled and self._max_investigations > 0 else
+            "Additional investigation tools are unavailable for this request. Use the supplied evidence "
+            "to return the final code now. If it is insufficient, explain the unresolved evidence gap; "
+            "do not announce future work or request tools."
+        )
+        system_prompt = render_template(PROMPTS_DIR / "reverser_system.md",
+                                        investigation_instructions=investigation_instructions)
         source_context = ""
         if self._source_context_builder is not None:
             source_context = self._source_context_builder.build(target)

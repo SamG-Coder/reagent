@@ -1,6 +1,8 @@
 """Tests for model-requested read-only RE investigations."""
 from __future__ import annotations
 
+import pytest
+
 from re_agent.agents.reverser import ReverserAgent
 from re_agent.backend.stub import StubBackend
 from re_agent.core.models import FunctionTarget
@@ -42,3 +44,15 @@ def test_reverser_executes_bounded_read_only_action() -> None:
     assert llm.calls == 2
     assert "ResolvedCall" in code
     assert "TOOL decompile(0x200)" in llm.last_messages[-1].content
+
+
+@pytest.mark.parametrize(("enabled", "budget"), [(False, 8), (True, 0)])
+def test_unavailable_investigations_are_not_advertised(enabled, budget):
+    llm = _ActionLLM()
+    with pytest.raises((ValueError, RuntimeError)):
+        ReverserAgent(llm, StubBackend(), investigation_enabled=enabled,
+                      max_investigations=budget).reverse(FunctionTarget("100", "", "f"))
+    system = llm.last_messages[0].content
+    assert '"actions"' not in system
+    assert "Additional investigation tools are unavailable" in system
+    assert llm.calls == 1

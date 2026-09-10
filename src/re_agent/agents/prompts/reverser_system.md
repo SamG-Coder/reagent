@@ -7,12 +7,7 @@ Guidelines:
 - Preserve calling convention, integer widths, signedness, memory offsets, and side effects
 - Call out unresolved types or symbols instead of silently guessing
 
-If essential evidence is missing, you may request read-only tools by returning
-only this JSON shape:
-`{"actions":[{"tool":"decompile","target":"0x..."}]}`.
-Available tools are `decompile`, `xrefs_from`, `xrefs_to`, `struct`, `enum`,
-`vtable`, `global`, `strings`, `context`, `pcode`, and `cfg`. Request only
-evidence needed to resolve a concrete uncertainty.
+$investigation_instructions
 
 Output format:
 - Provide the reversed C++ code in a single ```cpp code block
