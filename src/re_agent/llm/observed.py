@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from re_agent.llm.protocol import LLMProvider, Message
+from re_agent.utils.storage import atomic_json
 
 
 @dataclass
@@ -25,11 +26,13 @@ class CallBudget:
 
 
 class ObservedProvider:
-    def __init__(self, provider: LLMProvider, budget: CallBudget, role: str, log_dir: Path | None) -> None:
+    def __init__(self, provider: LLMProvider, budget: CallBudget, role: str, log_dir: Path | None,
+                 target: str | None = None) -> None:
         self.provider = provider
         self.budget = budget
         self.role = role
         self.log_dir = log_dir
+        self.target = target
 
     @property
     def last_metadata(self) -> object:
@@ -85,7 +88,20 @@ class ObservedProvider:
         if context:
             context.emit("call", self.role)
         start = time.monotonic()
-        event: dict[str, Any] = {"role": self.role, "call": number, "request": request, "queue_wait_s": waited}
+        event: dict[str, Any] = {"role": self.role, "call": number, "request": request, "queue_wait_s": waited,
+                                 "target": self.target, "status": "running", "started_at": time.time()}
+
+        def publish() -> None:
+            if self.log_dir:
+                def encode(value: Any) -> Any:
+                    if is_dataclass(value) and not isinstance(value, type):
+                        return asdict(value)
+                    return str(value)
+
+                atomic_json(self.log_dir / f"call-{number:04d}-{self.role}.json",
+                            json.loads(json.dumps(event, default=encode)))
+
+        publish()
         try:
             if "messages" in request:
                 response = self.provider.send(request["messages"], **request["kwargs"])
@@ -94,25 +110,18 @@ class ObservedProvider:
             event["response"] = response
             if context:
                 context.check()
+            event["status"] = "completed"
             return response
         except Exception as exc:
             status = getattr(exc, "status_code", None)
             if context and status in (401, 403):
                 context.fail("authentication", str(exc))
             event["error"] = str(exc)
+            event["status"] = "failed"
             raise
         finally:
             event["duration_s"] = time.monotonic() - start
             event["metadata"] = self.last_metadata
             if context:
                 context.emit("request_timing", {"queue_wait_s": waited, "request_s": event["duration_s"]})
-            if self.log_dir:
-
-                def encode(value: Any) -> Any:
-                    if is_dataclass(value) and not isinstance(value, type):
-                        return asdict(value)
-                    return str(value)
-
-                (self.log_dir / f"call-{number:04d}-{self.role}.json").write_text(
-                    json.dumps(event, default=encode, indent=2), encoding="utf-8"
-                )
+            publish()

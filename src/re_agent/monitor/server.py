@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
+from re_agent.monitor.calls import CallReports
 from re_agent.monitor.events import AgentEvents
 from re_agent.utils.storage import atomic_json, file_lock
 
@@ -32,10 +33,10 @@ class Monitor:
     def __init__(self, work_dir: Path, state_dir: Path, session_globs: list[str],
                  log_glob: str | None = None, total: int = 0, worker: list[str] | None = None,
                  progress_file: str | None = None, stop_file: str | None = None,
-                 event_glob: str | None = None) -> None:
+                 event_glob: str | None = None, call_glob: str | None = None) -> None:
         if total < 0:
             raise ValueError("Total function count must be nonnegative")
-        for pattern in [*session_globs, *([log_glob] if log_glob else []), *([event_glob] if event_glob else [])]:
+        for pattern in [*session_globs, *[p for p in (log_glob, event_glob, call_glob) if p]]:
             if Path(pattern).anchor or ".." in Path(pattern).parts:
                 raise ValueError("Monitor patterns must be relative to the working directory")
         self.work_dir = work_dir.resolve()
@@ -54,6 +55,8 @@ class Monitor:
         self.log_glob = log_glob
         self.event_glob = event_glob
         self.agent_events = AgentEvents()
+        self.call_glob = call_glob
+        self.call_reports = CallReports()
         self.total = total
         self.worker = worker or []
         self.record = self.state_dir / "worker.json"
@@ -265,6 +268,9 @@ class Monitor:
                     snapshot["agents"] = self.agent_events.read(latest)
                 snapshot["event_sources"] = [str(p.relative_to(self.work_dir)).replace("\\", "/")
                                              for p in sorted(event_paths)]
+            if self.call_glob:
+                snapshot["agents"] = [*snapshot.get("agents", []),
+                                      *self.call_reports.read(self.work_dir, self.call_glob)]
             return snapshot
 
     def external_progress(self) -> dict[str, Any]:

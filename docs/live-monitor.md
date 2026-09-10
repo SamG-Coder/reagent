@@ -92,3 +92,17 @@ checks a conservative 240-character output-path budget before creating the home.
 It preserves the original auth path and managed requirements without copying
 credentials. The caller owns the separate home and its retention/cleanup. Use a
 new isolated directory for a clean run; existing homes are never overwritten.
+# Model request activity
+
+For ordinary ReAgent providers, add `--call-glob "**/call-*.json"` to the
+monitor command, relative to its working directory. ReAgent writes an atomic
+running record before each admitted model request, then updates it on completion
+or failure. The existing terminal shows function, role, call number, elapsed time,
+queue wait, completed response, and errors. This works independently of provider
+and can be combined with native `--event-glob` output.
+
+Responses appear when the provider returns; this does not stream individual model
+tokens. Raw request prompts are not displayed in the terminal. The reader retains
+the latest 128 call records, bounds displayed response/error text, skips files over
+2 MiB, and caches unchanged records. Configure `--worker` when starting a run through
+the monitor to enable its existing Start/resume and Stop controls.

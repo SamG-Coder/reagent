@@ -73,8 +73,8 @@ def run_fix_loop(
         log_dir = log_dir / run_id
         log_dir.mkdir(parents=True, exist_ok=True)
     budget = CallBudget(max_llm_calls)
-    reverser_llm = ObservedProvider(reverser_llm, budget, "reverser", log_dir)
-    checker_llm = ObservedProvider(checker_llm, budget, "checker", log_dir)
+    reverser_llm = ObservedProvider(reverser_llm, budget, "reverser", log_dir, target=target.address)
+    checker_llm = ObservedProvider(checker_llm, budget, "checker", log_dir, target=target.address)
     reverser = ReverserAgent(
         reverser_llm,
         backend,
