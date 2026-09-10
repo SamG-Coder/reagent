@@ -88,6 +88,9 @@ def build_plan(backend: REBackend, seeds: list[str], identity: str, *,
                max_depth: int = 1, max_functions: int = 100) -> TargetPlan:
     _limits(max_depth, max_functions)
     roots = sorted({checked_address(seed) for seed in seeds})
+    resolver = getattr(backend, "resolve_function", None)
+    if callable(resolver):
+        roots = sorted({checked_address(resolver(seed)) for seed in roots})
     if not roots:
         raise ValueError("Planning requires at least one seed address or search result")
     plan = TargetPlan(identity, roots, max_depth=max_depth, max_functions=max_functions)

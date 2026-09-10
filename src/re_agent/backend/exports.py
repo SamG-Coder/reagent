@@ -193,5 +193,30 @@ class GhidraExportsBackend(StubBackend):
         # determines which exported functions have already been accepted.
         return self.search(class_name or "")
 
+    def resolve_function(self, target: str) -> str:
+        """Follow exported, single-instruction direct jump wrappers conservatively."""
+        import re
+
+        address = normalize_address(target)
+        seen: set[str] = set()
+        for _ in range(32):
+            if address in seen:
+                raise ValueError(f"Cyclic direct jump wrappers at {address}")
+            seen.add(address)
+            if not (self.root / f"{address}.json").is_file():
+                return address  # The planner records missing evidence as a gap.
+            assembly = self._function(address).get("assembly", [])
+            if not isinstance(assembly, list) or len(assembly) != 1:
+                return address
+            jump = re.fullmatch(r"\s*(?:0x)?[0-9a-f]+\s+JMP\s+(?:0x)?([0-9a-f]+)\s*",
+                                str(assembly[0]), re.I)
+            if not jump:
+                return address
+            destination = normalize_address(jump.group(1))
+            if not (self.root / f"{destination}.json").is_file():
+                return address  # Missing destination evidence must remain explicit.
+            address = destination
+        raise ValueError("Direct jump wrapper depth exceeds 32")
+
     def unimplemented(self, filter_pattern: str | None = None) -> list[FunctionEntry]:
         return self.search(filter_pattern or "")
