@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from pathlib import Path
 
 from re_agent.agents.loop import run_fix_loop
 from re_agent.backend.protocol import REBackend
 from re_agent.config.schema import ReAgentConfig
-from re_agent.core.models import Finding, FunctionTarget, HookEntry, ReversalResult, ValidationVerdict, Verdict
+from re_agent.core.models import (
+    CheckerVerdict,
+    Finding,
+    FunctionTarget,
+    HookEntry,
+    ReversalResult,
+    ValidationVerdict,
+    Verdict,
+)
 from re_agent.core.session import Session
 from re_agent.llm.protocol import LLMProvider
 from re_agent.parity.engine import fetch_ghidra_data, score_single
@@ -84,7 +93,19 @@ def reverse_single(
             max_llm_calls=config.orchestrator.max_llm_calls_per_function,
         )
     except (RuntimeError, OSError, ValueError) as exc:
-        result = ReversalResult(target=target, code="", success=False, error=str(exc))
+        if checked is not None:
+            # A later provider failure must not erase the last locally checked
+            # draft. Completed build/test gates do not constitute model approval.
+            result = replace(
+                checked, success=False, error=str(exc),
+                checker_verdict=CheckerVerdict(
+                    verdict=Verdict.UNKNOWN,
+                    summary="Processing interrupted before acceptance",
+                    issues=[str(exc)],
+                ),
+            )
+        else:
+            result = ReversalResult(target=target, code="", success=False, error=str(exc))
         logger.error("Reversal failed for %s: %s", target.address, exc)
 
     # Write generated code to a file so users don't have to dig through logs
