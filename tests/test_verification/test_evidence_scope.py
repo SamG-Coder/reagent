@@ -43,6 +43,6 @@ def test_evidence_conflict_stops_repair_loop_without_accepting_candidate():
     checker = MockLLM(['{"verdict":"PASS","summary":"Matches assembly"}'])
     result = run_fix_loop(FunctionTarget("100", "", "f"), ScopeBackend(), reverser, checker, max_rounds=3)
     assert not result.success
-    assert result.error == "Stopped: reconcile incompatible structural evidence before retrying"
-    assert result.rounds_used == 1
-    assert reverser._idx == checker._idx == 1
+    assert result.error == "Blocked: reconcile incompatible binary evidence before reconstruction"
+    assert result.rounds_used == 0
+    assert reverser._idx == checker._idx == 0

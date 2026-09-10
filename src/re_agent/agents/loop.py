@@ -69,6 +69,16 @@ def run_fix_loop(
     if max_rounds < 1:
         raise ValueError("max_rounds must be positive")
     run_id = uuid.uuid4().hex
+    if objective_verifier_enabled:
+        # Detect inconsistent export scopes before spending a model call.
+        # Compare the evidence to itself; only scope conflicts block this stage.
+        try:
+            evidence = verify_candidate(backend.decompile(target.address).raw_output, target, backend)
+        except (OSError, RuntimeError, ValueError):
+            evidence = None
+        if evidence is not None and evidence.evidence_conflict:
+            return ReversalResult(target=target, code="", run_id=run_id, objective_verdict=evidence,
+                                  error="Blocked: reconcile incompatible binary evidence before reconstruction")
     if log_dir:
         log_dir = log_dir / run_id
         log_dir.mkdir(parents=True, exist_ok=True)
